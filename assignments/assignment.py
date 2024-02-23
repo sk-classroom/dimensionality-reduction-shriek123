@@ -1,6 +1,8 @@
 # %%
 import numpy as np
 from typing import Any
+from scipy import sparse
+
 
 
 # TODO: implement the PCA with numpy
@@ -34,7 +36,15 @@ class PrincipalComponentAnalysis:
         self : object
             Returns the instance itself.
         """
-        pass
+        self.mean = np.mean(X, axis=0)
+        Xc = X - self.mean
+        Cov=Xc.T @ Xc
+        eigenvalues, eigenvectors =np.linalg.eig(Cov)
+        focal_basis_vector=np.argsort(eigenvalues)[-self.n_components:]
+        self.components=eigenvectors[:,focal_basis_vector]
+
+
+        return self
 
     def transform(self, X: np.ndarray) -> np.ndarray:
         """
@@ -53,7 +63,9 @@ class PrincipalComponentAnalysis:
         X_new : ndarray of shape (n_samples, n_components)
             Transformed values.
         """
-        pass
+        Xc= X - self.mean
+        X_new=Xc @ self.components
+        return X_new
 
 
 # TODO: implement the LDA with numpy
@@ -91,7 +103,23 @@ class LinearDiscriminantAnalysis:
         5. Sort the eigenvectors by decreasing eigenvalues and choose k eigenvectors with the largest eigenvalues to form a d×k dimensional matrix W.
         6. Use this d×k eigenvector matrix to transform the samples onto the new subspace.
         """
-        pass
+        y_unique=np.unique(y)
+        self.mean = np.array([np.mean(X[y == c], axis=0) for c in y_unique])        
+        
+        Sw = np.zeros((X.shape[1], X.shape[1]))
+        for yc in y_unique:
+            Xclass = X[y == yc]
+            Sw += np.cov(Xclass.T)
+
+        Sb = np.zeros((X.shape[1], X.shape[1]))
+        mu = X.mean(axis=0)
+        for yc in enumerate(y_unique):
+            mc = X[y == yc].mean(axis=0)
+            Sb += np.outer((mc - mu), (mc - mu).T)
+
+        w, v = sparse.linalg.eigs(Sb, M=Sw, k=self.n_components, which="LM")
+        self.components=v
+        return self
 
     def transform(self, X: np.ndarray) -> np.ndarray:
         """
@@ -110,7 +138,8 @@ class LinearDiscriminantAnalysis:
         X_new : ndarray of shape (n_samples, n_components)
             Transformed values.
         """
-        pass
+        X_new= X@ self.components
+        return X_new
 
 
 # TODO: Generating adversarial examples for PCA.
@@ -145,4 +174,24 @@ class AdversarialExamples:
             Cluster IDs. y[i] is the cluster ID of the i-th sample.
 
         """
-        pass
+
+        cluster1 = np.random.multivariate_normal(mean=[2, 2], cov=[[1, 0.5], [0.5, 1]], size=n_samples // 2)
+        cluster2 = np.random.multivariate_normal(mean=[-5, 5], cov=[[1, -0.5], [-0.2, 1]], size=n_samples - (n_samples // 2))
+        X = np.vstack((cluster1, cluster2))
+
+        # Xc = X - np.mean(X, axis=0)
+
+        # Cov=Xc.T @ Xc
+
+        # Cov=np.cov(X, rowvar=False)
+
+        # eigenvalue, eigenvector =np.linalg.eig(Cov)
+        # focal_basis_vector=np.argsort(eigenvalue)[-n_features:]
+        # v=eigenvector[:,focal_basis_vector]
+        # Xt= X @ v
+
+        y = np.zeros(n_samples)
+        y[n_samples // 2:] = 1
+
+
+        return X, y
